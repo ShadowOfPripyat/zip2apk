@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Zip2APK</string>
+
+    <!-- About screen metadata. Edit these values for your own distribution. -->
+    <string name="about_description">Builds Gradle-based Android Studio projects locally from source ZIPs, with Java, Kotlin and C/C++/CMake support.</string>
+    <string name="about_creator">Your name</string>
+    <string name="about_github_url">https://github.com/your-account/Zip2APK</string>
+    <string name="about_license">MIT License</string>
+</resources>

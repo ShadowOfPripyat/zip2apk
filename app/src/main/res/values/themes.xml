@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.Zip2APK" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">@color/zip2apk_window_background</item>
+        <item name="android:colorBackground">@color/zip2apk_window_background</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>
