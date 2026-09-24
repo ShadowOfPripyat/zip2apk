@@ -1,6 +1,10 @@
 # Zip2APK
+<img width="235" height="470" alt="imatge" src="https://github.com/user-attachments/assets/bcd7cda5-8a67-4eb7-9c3c-8aff2e2507b8" />
 
-Zip2APK is a sideload-only Jetpack Compose Android application that turns a normal Android Studio / Gradle source ZIP into an installable debug APK directly on an ARM64 Android device.
+Zip2APK is a Jetpack Compose Android app that turns a normal Android Studio / Gradle source ZIP into an installable debug APK directly on an ARM64 Android device.
+
+The basic idea is to choose a zip and the app builds it into an APK with one click
+
 
 ```text
 project.zip
@@ -86,35 +90,6 @@ After onboarding, the main screen intentionally contains only the Zip2APK title 
 The initial setup is large and requires Internet access. Gradle dependencies may also require Internet access on the first build. Gradle's cache is retained for subsequent builds.
 
 
-
-## 0.5.5 Android compiler-runtime bridge
-
-0.5.4 restored the official NDK sysroot and Android platform linker stubs, but Termux-hosted `clang++` still needs the LLVM target-runtime archives that live **outside** the sysroot. In particular, Android C++ links automatically require LLVM `libunwind.a`, and some builds also require compiler-rt/atomic archives. 0.5.5 discovers the selected NDK's Clang resource tree and adds its target runtime directories to the native linker search path while keeping the official NDK API stubs first and the Termux prefix only as a final compatibility fallback. No desktop NDK executable is launched. See `NATIVE_COMPILER_RUNTIME_0.5.5.md`.
-
-## 0.5.4 Android NDK platform/sysroot bridge
-
-0.5.3 completed the Gradle/AAR/Prefab side of native dependency handling, but Termux's flattened `ndk-sysroot` is not a full substitute for the Android NDK platform tree used by normal CMake projects. In particular, standard source such as `find_library(log-lib log)` could fail because the API/ABI-specific NDK linker stubs were absent from CMake's search environment.
-
-0.5.4 installs/reuses an official side-by-side NDK **as target data only** when a native project is built. Zip2APK keeps using Android-native Termux CMake/Clang/Ninja, but injects the official NDK sysroot, target architecture, API-specific library directories, root paths and matching `libc++_shared.so`. A literal project `ndkVersion` is honored; otherwise NDK `29.0.14206865` is used to match the current Termux NDK 29 baseline. The NDK's Linux/x86_64 host executables are never launched. See `NATIVE_PLATFORM_SYSROOT_0.5.4.md`.
-
-## 0.5.3 Prefab/CMake package discovery fix
-
-0.5.2 proved that Gradle AAR resolution and Prefab generation were working, but Termux-hosted CMake still could not discover generated packages such as `oboeConfig.cmake`. Prefab writes CMake configs under `lib/<target-triple>/cmake/<package>`, while Zip2APK deliberately runs Android-native Termux CMake without Google's desktop-host NDK toolchain file. That means CMake's host architecture search layout can differ from Prefab's target layout.
-
-0.5.3 discovers the concrete generated config directories, verifies each Prefab package has one, adds those directories directly to `CMAKE_PREFIX_PATH`, and passes exact `<PackageName>_DIR:PATH=...` hints. The bridge is generic for any Prefab package. See `NATIVE_DEPENDENCY_FIX_0.5.3.md`.
-
-## 0.5.2 native dependency protocol fix
-
-0.5.0/0.5.1 had a resolver IPC bug in addition to the artifact-selection problem: the generated Gradle init script wrote the field separators as the literal characters `\\t` and `\\n` instead of real tab/newline delimiters. Gradle could therefore resolve dependencies successfully while Zip2APK parsed the output as one opaque line and reported **0 AARs**, with no diagnostics. 0.5.2 fixes the record protocol and broadens dependency recovery so configuration names no longer have to match a guessed Android variant.
-
-The resolver now inspects every normal resolvable configuration in each native consumer module, records the exact external module versions already selected by Gradle, tries normal and variant-reselected `ArtifactView` AAR selection, then uses an exact `group:module:version@aar` artifact-only fallback for those selected components. Gradle still owns repositories, credentials, BOMs, catalogs, substitutions, constraints and transitive graph selection. The fallback only recovers the original AAR file required by Prefab. See `NATIVE_DEPENDENCY_FIX_0.5.2.md`.
-
-## 0.5.1 native AAR-resolution fix
-
-0.5.0 still used Gradle's legacy default artifact view when collecting AARs. On modern Android Gradle Plugin classpaths, the default view may expose transformed class/resource artifacts rather than the producer's original `.aar`, so a completely valid dependency graph could appear as **0 AARs** to Zip2APK. 0.5.1 fixes this by explicitly asking Gradle's `ArtifactView` for `artifactType=aar`, while retaining fallbacks for local file AARs and older Gradle/AGP behavior. This keeps Maven coordinates, version catalogs, BOMs, substitutions, repositories and transitives under Gradle's control.
-
-When no AAR is found, the resolver now logs compact configuration/component diagnostics so a genuinely missing Gradle dependency can be distinguished from artifact-selection failure. See `NATIVE_DEPENDENCY_FIX_0.5.1.md`.
-
 ## C/C++ native-build architecture
 
 Zip2APK does not execute Google's desktop-host NDK binaries on the phone. Version 0.5.x separates native handling into three layers instead: a planner discovers configured Android native modules and preserves literal Gradle CMake options; Gradle itself resolves the module's real dependency graph; then a build-system backend runs Android-native host tools and hands the resulting `.so` files back to AGP through `jniLibs`.
@@ -185,33 +160,7 @@ app/src/main/java/com/zip2apk/builder/
     ├── SelfSigningManager.kt
     └── AppPreferences.kt
 ```
-
-## 0.4.0 UX update
-
-Version 0.4.0 adds animated navigation, Material You preference control, theme-matched system bars, consolidated settings, persistent APK history with long-press metadata, build-status tags, and component-version reporting in About. See `UI_CHANGES_0.4.0.md`.
-
-About metadata (creator, GitHub repository and license) can be edited in `app/src/main/res/values/strings.xml`.
-
-## 0.4.1 compile hotfix
-
-Version 0.4.1 fixes the settings navigation compile failure introduced in 0.4.0. `SETTINGS_ROOT` is now a file-level navigation constant, so both `MainActivity` and the top-level Compose settings host resolve the same symbol. No toolchain reset is required when updating from 0.3.2/0.4.0.
-
-
-## 0.4.2 bootstrap staging hotfix
-
-Version 0.4.2 fixes first-run setup failures reporting `Unable to create bootstrap staging directory`. Bootstrap extraction now uses Android's canonical `context.filesDir`, a unique staging directory for each attempt, and transactional activation so stale/partial staging folders cannot block setup or destroy a previously usable prefix.
-
-## 0.4.3 persistent self-update signing
-
-Version 0.4.3 establishes a persistent per-install signing identity for Zip2APK itself. The first desktop build automatically creates a private PKCS#12 key, signs Zip2APK with it, and embeds a recovery copy in the APK. Installed Zip2APK copies that key into app-private storage and passes it back to Gradle whenever it detects that the selected project is Zip2APK.
-
-Before any APK install handoff, Zip2APK now checks package/version/signing compatibility and reports certificate mismatches or downgrades before Android displays its generic installer failure. Password-bearing Gradle properties are redacted from the visible build log. See `SELF_UPDATE_SIGNING.md` for the one-time migration required from 0.4.1/older signing identities.
-
-## 0.4.5 build reliability update
-
-Version 0.4.5 restores the build-engine sources accidentally omitted from the 0.4.3/0.4.4 full-source packaging path, validates Zip2APK self-build source completeness, reduces Android SDK progress-log churn, installs/overlays the project's requested Build-Tools revision, retries SDK platform installation with useful diagnostics, respects `gradle-wrapper.properties` even when `gradle-wrapper.jar` is absent by caching the requested Gradle distribution, fixes root-project false positives in module detection, and broadens CMake top-level file discovery. See `BUILD_RELIABILITY_0.4.5.md`.
-
-
+update log
 ## 0.5.0 native dependency architecture
 
 Version 0.5.0 replaces the one-off standalone-CMake path with a backend-oriented native build pipeline. Gradle remains responsible for repository and dependency semantics on a per-module basis; resolved AARs are inspected for Prefab; Google's Prefab CLI 2.1.0 is embedded as a JVM tool and used to generate CMake integration; the CLI-generated imported targets determine which shared native dependencies are staged for APK packaging; and only after all native modules succeed is AGP's desktop-host `externalNativeBuild` wiring disabled in the extracted workspace. The project analyzer also no longer treats every directory named `build` as generated output, preventing legitimate source packages such as `com/.../builder/build` from disappearing during analysis or source packaging. See `NATIVE_BUILD_ARCHITECTURE_0.5.0.md`.
